@@ -1,0 +1,24 @@
+:root {
+  --bg: #080a11;
+  --text: #dce4f7;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  height: 100vh;
+}
+
+#root { height: 100%; }
+
+#key {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-size: 40vmin;
+  line-height: 1;
+}

@@ -1,0 +1,12 @@
+# Node
+node_modules/
+
+# Client bundle, rebuilt by npm start
+dist/
+
+# arduino-cli --output-dir artifacts
+build/
+*.uf2
+*.elf
+*.bin
+*.hex

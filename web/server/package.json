@@ -1,0 +1,17 @@
+{
+  "name": "electric-beats-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Serial bridge and static host for the electric_beats keypad readout",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "serialport": "^12.0.0",
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
