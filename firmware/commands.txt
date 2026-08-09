@@ -1,4 +1,4 @@
-#compile and upload
-arduino-cli compile -u -p /dev/ttyACM0 -b rp2040:rp2040:rpipico2 keypad
-#monitor
-arduino-cli monitor -p /dev/ttyACM0 -c baudrate=115200
+# deploy: copy code.py to the CIRCUITPY drive, it auto-reloads
+cp code.py /media/$USER/CIRCUITPY/
+# monitor (stop the web server first, they share /dev/ttyACM0)
+screen /dev/ttyACM0 115200

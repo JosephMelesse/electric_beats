@@ -1,14 +1,21 @@
 # Firmware
 
-Scans the keypad, sends `K <key>` lines over USB serial at 115200, and
-synthesizes all game audio on the Pico. The browser is silent.
+Reads twelve individual buttons, sends `K <key>` lines over USB serial at
+115200, and synthesizes all game audio on the Pico. The browser is silent.
 
 ## Wiring
 
+Each button connects its GPIO to GND; the firmware uses internal pull-ups.
+
 | Signal | Pico 2 | Physical pin |
 | --- | --- | --- |
-| Keypad R1-R4 | GP2, GP3, GP4, GP5 | 4, 5, 6, 7 |
-| Keypad C1-C3 | GP6, GP7, GP8 | 9, 10, 11 |
+| Buttons 1-6 | GP2, GP3, GP4, GP5, GP6, GP7 | 4, 5, 6, 7, 9, 10 |
+| Button * | GP8 | 11 |
+| Button 0 | GP9 | 12 |
+| Button 9 | GP10 | 14 |
+| Button 8 | GP11 | 15 |
+| Button 7 | GP12 | 16 |
+| Button # | GP13 | 17 |
 | Amp I2S DIN | GP15 | 20 |
 | Amp I2S BCLK | GP19 | 25 |
 | Amp I2S LRC | GP20 | 26 |
@@ -26,9 +33,9 @@ ever needed again, it goes in series with a speaker wire.
 Each key plays one semitone of a chromatic scale from C4: `1` = C4 up to
 `#` = B4, with `0` = A4 and `*` = A#4.
 
-Volume pot: master volume, silent to loud.
-
-Preset pot: split into three zones, turn the knob to pick the sound.
+The pots are currently disconnected: volume and preset are the VOLUME
+and PRESET_INDEX constants at the top of `code.py`. When the pots return,
+the plan is volume on ADC0 and a three-zone preset selector on ADC1.
 
 | | acid (left) | organ (middle) | bass_lead (right) |
 | --- | --- | --- | --- |
@@ -44,8 +51,13 @@ is already linear. Zero attack and release get 2-5 ms ramps so they do
 not click. Zone edges have a dead band so a knob resting on a boundary
 does not flicker between presets.
 
-## Build
+## Deploy
 
-Arduino IDE with the arduino-pico (Earle Philhower) core, board set to
-the Pico 2. The sketch is `keypad/keypad.ino`; it needs no libraries
-beyond the core's bundled I2S.
+CircuitPython 10.x for the Pico 2 (flash the .uf2 from circuitpython.org
+once), then copy `code.py` to the CIRCUITPY drive. It auto-reloads on
+every copy; no build step. Everything used is built into CircuitPython,
+no libraries to install.
+
+Note: with CircuitPython the serial port carries the Python console, so
+the server may see REPL noise besides the `K` lines; its parser ignores
+anything that is not a key line.
