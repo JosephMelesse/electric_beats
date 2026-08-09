@@ -15,6 +15,13 @@ const MIME = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".svg": "image/svg+xml",
 };
 
 async function serveStatic(req, res) {
@@ -59,8 +66,22 @@ async function main() {
 
   const wss = new WebSocketServer({ server, path: "/ws" });
 
+  // Control messages (start, retry, song) are relayed to every client,
+  // sender included, so all screens act on the same message and stay in
+  // step. Clients never apply a control locally when the socket is up.
   wss.on("connection", (socket) => {
     clients.add(socket);
+    socket.on("message", (data) => {
+      let message;
+      try {
+        message = JSON.parse(data);
+      } catch {
+        return;
+      }
+      if (message?.type === "control") {
+        broadcast(message);
+      }
+    });
     socket.on("close", () => clients.delete(socket));
   });
 

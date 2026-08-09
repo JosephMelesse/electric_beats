@@ -7,6 +7,7 @@ const HIT_WINDOW_BEATS = 1.9; // asteroid lifetime after its beat
 const LOOP_GAP_BEATS = 4; // silence before the song restarts
 const LASER_MS = 150;
 const TURN_RATE = 14; // radians per second toward the target angle
+export const RUN_MS = 60000; // one run lasts a minute
 
 // Positions traced from the design sketch, in sketch pixel coordinates.
 // Two clusters arc down and inward, with the ship at top center between them.
@@ -73,10 +74,25 @@ export function createEngine({ width, height, song }) {
     songIndex: 0,
     startMs: null,
     lastMs: null,
+    runStartMs: null,
+    timeLeftMs: RUN_MS,
+    over: false,
   };
 
   function update(nowMs) {
-    if (state.startMs === null) state.startMs = nowMs;
+    if (state.over) return;
+    if (state.startMs === null) {
+      state.startMs = nowMs;
+      state.runStartMs = nowMs;
+    }
+
+    state.timeLeftMs = Math.max(0, RUN_MS - (nowMs - state.runStartMs));
+    if (state.timeLeftMs === 0) {
+      state.over = true;
+      state.asteroids.clear();
+      state.lasers = [];
+      return;
+    }
     const dt = state.lastMs === null ? 0 : (nowMs - state.lastMs) / 1000;
     state.lastMs = nowMs;
     const beat = (nowMs - state.startMs) / beatMs;
@@ -121,6 +137,7 @@ export function createEngine({ width, height, song }) {
 
   // Returns true on a hit; the caller decides what sound to make.
   function press(key, nowMs) {
+    if (state.over) return false;
     if (!state.slots.has(key)) return false;
     const asteroid = state.asteroids.get(key);
     if (asteroid === undefined) return false;

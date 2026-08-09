@@ -1,6 +1,9 @@
 # Node
 node_modules/
 
+# Python bytecode from firmware syntax checks
+__pycache__/
+
 # Client bundle, rebuilt by npm start
 dist/
 

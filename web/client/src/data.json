@@ -1,0 +1,51 @@
+{
+  "instrument": {
+    "name": "Cache Register",
+    "tagline": "hand-built | 12 keys | chromatic from C4",
+    "photo": "/src/assets/instrument_photo.png"
+  },
+  "sections": [
+    {
+      "title": "Profiles",
+      "items": ["Profile point one", "Profile point two", "Profile point three"]
+    },
+    {
+      "title": "Effects",
+      "items": ["Effect point one", "Effect point two", "Effect point three"]
+    },
+    {
+      "title": "Design Choices",
+      "items": ["Design point one", "Design point two", "Design point three"]
+    },
+    {
+      "title": "Vibe",
+      "items": ["Vibe point one", "Vibe point two", "Vibe point three"]
+    }
+  ],
+  "team": [
+    {
+      "name": "Ana",
+      "major": "Materials Engineering",
+      "intro": "I’m Ana, a materials engineering major and am transferring from West Los Angeles Community College with an interest in working on semiconductors.",
+      "photo": "/src/assets/team_pics/ana_web.png"
+    },
+    {
+      "name": "Dante",
+      "major": "Materials Engineering",
+      "intro": "Hello my name is Dante Sosa. I’m transferring from College of the Canyons, and my major is Materials Engineering with an interest in electronic materials.",
+      "photo": "/src/assets/team_pics/dante.jpg"
+    },
+    {
+      "name": "Joseph",
+      "major": "Computer Science",
+      "intro": "Hi I'm Joseph Melesse, I'm a Computer Science major at Cerritos college.",
+      "photo": "/src/assets/team_pics/joseph.jpg"
+    },
+    {
+      "name": "Khai",
+      "major": "Electrical Engineering",
+      "intro": "Khai Lam. I am an Electrical Engineering transfer student from Mount San Antonio College. I am interested in embedded systems and aerospace automation.",
+      "photo": "/src/assets/team_pics/khai.jpg"
+    }
+  ]
+}

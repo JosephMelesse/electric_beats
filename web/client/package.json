@@ -5,14 +5,21 @@
   "type": "module",
   "description": "React keypad readout for electric_beats",
   "scripts": {
-    "build": "esbuild src/main.jsx --bundle --minify --jsx=automatic --format=esm --loader:.png=dataurl --outfile=dist/bundle.js --define:process.env.NODE_ENV='\"production\"'",
-    "watch": "esbuild src/main.jsx --bundle --jsx=automatic --format=esm --loader:.png=dataurl --outfile=dist/bundle.js --define:process.env.NODE_ENV='\"development\"' --sourcemap --watch"
+    "build": "npm run build:js && npm run build:css",
+    "build:js": "esbuild src/main.jsx --bundle --minify --jsx=automatic --format=esm --loader:.png=dataurl --outfile=dist/bundle.js --define:process.env.NODE_ENV='\"production\"'",
+    "build:css": "tailwindcss -i src/Main.css -o dist/bundle.css --minify",
+    "watch": "npm run watch:js & npm run watch:css",
+    "watch:js": "esbuild src/main.jsx --bundle --jsx=automatic --format=esm --loader:.png=dataurl --outfile=dist/bundle.js --define:process.env.NODE_ENV='\"development\"' --sourcemap --watch",
+    "watch:css": "tailwindcss -i src/Main.css -o dist/bundle.css --watch"
   },
   "dependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "esbuild": "^0.28.0"
+    "@tailwindcss/cli": "^4.3.3",
+    "daisyui": "^5.7.16",
+    "esbuild": "^0.28.0",
+    "tailwindcss": "^4.3.3"
   }
 }

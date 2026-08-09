@@ -33,23 +33,25 @@ ever needed again, it goes in series with a speaker wire.
 Each key plays one semitone of a chromatic scale from C4: `1` = C4 up to
 `#` = B4, with `0` = A4 and `*` = A#4.
 
-The pots are currently disconnected: volume and preset are the VOLUME
-and PRESET_INDEX constants at the top of `code.py`. When the pots return,
-the plan is volume on ADC0 and a three-zone preset selector on ADC1.
+The volume pot (ADC0) sets the master level with a squared taper; full
+clockwise is the MAX_VOLUME constant in `code.py`. The effect pot (ADC1)
+selects the preset in three zones, left to right. A preset change only
+affects new key presses, and prints `P <name>` over serial. Zone edges
+have a dead band so a knob resting on a boundary does not flicker.
 
-| | acid (left) | organ (middle) | bass_lead (right) |
+Presets are mirrored in `web/client/src/assets/song.json` (two for
+Twinkle Twinkle, one for Hot Cross Buns) and keyed by zone:
+
+| | twinkle-shimmer (left) | twinkle-vibrato (middle) | hotcross-tremolo (right) |
 | --- | --- | --- | --- |
-| OSC 1 | sawtooth | square | sawtooth |
-| OSC 2 | square | sine | square, -12 semitones |
-| Mix | 15% | 60% | 40% |
-| Filter | low-pass 600 Hz, Q 16 | band-pass 1 kHz, Q 2 | low-pass 800 Hz, Q 4 |
-| ADSR | 0 / 0.10 / 0.6% / 0.20 | 0.01 / 0.05 / 0.9% / 0.15 | 0.01 / 0.30 / 0.2% / 0.00 |
+| Waveform | chime | soft saw | organ |
+| Effect | detune shimmer | 5.5 Hz vibrato | 4 Hz tremolo |
+| Filter | low-pass 5 kHz | low-pass 3 kHz | low-pass 4 kHz |
 
-Values are copied from the synth designer. Low-pass Q is in dB there
-(Web Audio convention) and converted to linear Q in the code; band-pass Q
-is already linear. Zero attack and release get 2-5 ms ramps so they do
-not click. Zone edges have a dead band so a knob resting on a boundary
-does not flicker between presets.
+All waveforms are built additively from sine harmonics that stay below
+Nyquist, so naive saw/square aliasing cannot occur; filters are gentle
+(Q 0.707) and note amplitudes are budgeted so summed voices cannot clip
+inside the synth.
 
 ## Deploy
 

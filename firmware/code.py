@@ -1,10 +1,15 @@
 # electric_beats firmware, CircuitPython 10.x on a Pico 2.
 # Reads twelve buttons, prints "K <key>" over USB serial, and plays each
-# key's note through the I2S amp using synthio. Pots are disconnected for
-# now: volume and preset are the constants VOLUME and PRESET_INDEX below.
+# key's note through the I2S amp using synthio. The volume pot on ADC0
+# sets the master level; the effect pot on ADC1 picks one of three
+# presets in three zones. Presets mirror the entries stored in
+# web/client/src/assets/song.json (two for Twinkle Twinkle, one for
+# Hot Cross Buns).
 
 import math
+import time
 
+import analogio
 import audiobusio
 import audiomixer
 import board
@@ -27,51 +32,55 @@ NOTE_FREQ = (
     369.99, 392.00, 415.30, 466.16, 440.00, 493.88,
 )
 
-# Single-cycle waveforms.
+# Waveforms are built additively from sine harmonics so they contain
+# nothing above Nyquist: no aliasing fizz from naive saw/square edges.
 WAVE_LEN = 256
-WAVE_AMP = 28000
-ramp = np.linspace(-WAVE_AMP, WAVE_AMP, num=WAVE_LEN, dtype=np.int16)
-SAW = ramp
-SQUARE = np.concatenate((
-    np.full(WAVE_LEN // 2, WAVE_AMP, dtype=np.int16),
-    np.full(WAVE_LEN // 2, -WAVE_AMP, dtype=np.int16),
-))
-SINE = np.array(
-    np.sin(np.linspace(0, 2 * math.pi, num=WAVE_LEN, endpoint=False))
-    * WAVE_AMP,
-    dtype=np.int16,
-)
+WAVE_AMP = 12000
 
-# Presets copied from the synth designer. Low-pass Q converted from the
-# UI's dB (Web Audio convention) to linear; band-pass Q is already linear.
-# osc2_ratio 0.5 is a -12 semitone pitch offset. Zero attack/release get
-# short ramps so they do not click.
+
+def additive(harmonics):
+    x = np.linspace(0, 2 * math.pi, num=WAVE_LEN, endpoint=False)
+    wave = np.zeros(WAVE_LEN)
+    for k, amp in harmonics:
+        wave = wave + amp * np.sin(k * x)
+    peak = max(np.max(wave), -np.min(wave))
+    return np.array(wave * (WAVE_AMP / peak), dtype=np.int16)
+
+
+CHIME = additive(((1, 1.0), (2, 0.35), (3, 0.10), (4, 0.12)))
+SOFT_SAW = additive(tuple((k, 1.0 / k) for k in range(1, 9)))
+ORGAN = additive(((1, 0.9), (2, 0.6), (3, 0.4), (4, 0.25)))
+
+VIBRATO = synthio.LFO(rate=5.5, scale=0.012)  # pitch wobble, ~15 cents
+TREMOLO = synthio.LFO(rate=4.0, scale=0.25, offset=0.75)  # level 0.5-1.0
+
+# One preset per effect-pot zone, left to right. "detune" adds a second
+# oscillator slightly sharp for a shimmer; "bend"/"tremolo" attach an
+# LFO to pitch or amplitude. Filters are gentle low-passes (Q 0.707),
+# there to darken, not resonate.
 PRESETS = (
     {
-        "name": "acid",
-        "osc1": SAW, "osc2": SQUARE, "osc2_ratio": 1.0, "mix": 0.15,
-        "filter": ("lp", 600, 6.31),
+        "name": "twinkle-shimmer", "wave": CHIME, "detune": 1.006,
+        "filter": 5000,
         "env": synthio.Envelope(
-            attack_time=0.002, decay_time=0.10,
-            sustain_level=0.006, release_time=0.20,
+            attack_time=0.005, decay_time=0.25,
+            sustain_level=0.5, release_time=0.3,
         ),
     },
     {
-        "name": "organ",
-        "osc1": SQUARE, "osc2": SINE, "osc2_ratio": 1.0, "mix": 0.60,
-        "filter": ("bp", 1000, 2.0),
+        "name": "twinkle-vibrato", "wave": SOFT_SAW, "bend": VIBRATO,
+        "filter": 3000,
+        "env": synthio.Envelope(
+            attack_time=0.02, decay_time=0.10,
+            sustain_level=0.6, release_time=0.2,
+        ),
+    },
+    {
+        "name": "hotcross-tremolo", "wave": ORGAN, "tremolo": TREMOLO,
+        "filter": 4000,
         "env": synthio.Envelope(
             attack_time=0.01, decay_time=0.05,
-            sustain_level=0.009, release_time=0.15,
-        ),
-    },
-    {
-        "name": "bass_lead",
-        "osc1": SAW, "osc2": SQUARE, "osc2_ratio": 0.5, "mix": 0.40,
-        "filter": ("lp", 800, 1.585),
-        "env": synthio.Envelope(
-            attack_time=0.01, decay_time=0.30,
-            sustain_level=0.002, release_time=0.005,
+            sustain_level=0.8, release_time=0.15,
         ),
     },
 )
@@ -86,40 +95,82 @@ mixer = audiomixer.Mixer(
 )
 i2s.play(mixer)
 mixer.voice[0].play(synth)
-VOLUME = 0.03  # master volume, 0.0 to 1.0
-PRESET_INDEX = 0  # 0 acid, 1 organ, 2 bass_lead
 
-mixer.voice[0].level = VOLUME
+# Volume pot: squared taper so the useful range is not crammed into the
+# first few degrees. Full clockwise is MAX_VOLUME, full range by default.
+MAX_VOLUME = 1.0
+POT_POLL = 0.02  # seconds between pot reads
+
+pot_volume = analogio.AnalogIn(board.GP26)
+pot_preset = analogio.AnalogIn(board.GP27)
+
+# Preset pot zone edges, with a dead band so a knob resting on an edge
+# does not flicker between presets.
+ZONE_EDGES = (65536 // 3, 2 * 65536 // 3)
+ZONE_DEAD = 3000
+
+
+def preset_zone(raw, current):
+    if raw < ZONE_EDGES[0] - ZONE_DEAD:
+        return 0
+    if ZONE_EDGES[0] + ZONE_DEAD < raw < ZONE_EDGES[1] - ZONE_DEAD:
+        return 1
+    if raw > ZONE_EDGES[1] + ZONE_DEAD:
+        return 2
+    return current
+
+
+def pot_to_level(avg):
+    return (avg / 65535) ** 2 * MAX_VOLUME
+
+
+vol_avg = pot_volume.value
+level = pot_to_level(vol_avg)
+mixer.voice[0].level = level
+preset_index = preset_zone(pot_preset.value, 0)
+next_poll = time.monotonic()
 
 keys = keypad.Keys(KEY_PINS, value_when_pressed=False, pull=True)
 
-active = {}  # key number -> (note, note)
-
-
-FILTER_MODES = {
-    "lp": synthio.FilterMode.LOW_PASS,
-    "bp": synthio.FilterMode.BAND_PASS,
-}
+active = {}  # key number -> tuple of notes
 
 
 def make_notes(k):
-    p = PRESETS[PRESET_INDEX]
-    kind, freq, q = p["filter"]
-    filt = synthio.Biquad(FILTER_MODES[kind], freq, Q=q)
-    shared = {"envelope": p["env"], "filter": filt}
-    return (
-        synthio.Note(
-            frequency=NOTE_FREQ[k], waveform=p["osc1"],
-            amplitude=1.0 - p["mix"], **shared,
-        ),
-        synthio.Note(
-            frequency=NOTE_FREQ[k] * p["osc2_ratio"], waveform=p["osc2"],
-            amplitude=p["mix"], **shared,
-        ),
+    p = PRESETS[preset_index]
+    filt = synthio.Biquad(synthio.FilterMode.LOW_PASS, p["filter"], Q=0.707)
+    note = synthio.Note(
+        frequency=NOTE_FREQ[k], waveform=p["wave"],
+        envelope=p["env"], filter=filt,
     )
+    if "bend" in p:
+        note.bend = p["bend"]
+    if "tremolo" in p:
+        note.amplitude = p["tremolo"]
+    detune = p.get("detune")
+    if not detune:
+        return (note,)
+    note.amplitude = 0.5
+    return (note, synthio.Note(
+        frequency=NOTE_FREQ[k] * detune, waveform=p["wave"],
+        envelope=p["env"], filter=filt, amplitude=0.5,
+    ))
 
 
 while True:
+    now = time.monotonic()
+    if now >= next_poll:
+        next_poll = now + POT_POLL
+        # Light smoothing keeps ADC noise from making the level jitter.
+        vol_avg += (pot_volume.value - vol_avg) * 0.2
+        new_level = pot_to_level(vol_avg)
+        if abs(new_level - level) > MAX_VOLUME / 200:
+            level = new_level
+            mixer.voice[0].level = level
+        zone = preset_zone(pot_preset.value, preset_index)
+        if zone != preset_index:
+            preset_index = zone
+            print("P", PRESETS[zone]["name"])
+
     event = keys.events.get()
     if event:
         if event.pressed:
