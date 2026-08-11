@@ -34,19 +34,32 @@ Each key plays one semitone of a chromatic scale from C4: `1` = C4 up to
 `#` = B4, with `0` = A4 and `*` = A#4.
 
 The volume pot (ADC0) sets the master level with a squared taper; full
-clockwise is the MAX_VOLUME constant in `code.py`. The effect pot (ADC1)
+clockwise is the MAX_VOLUME constant in `code.py`. Its outer legs are
+wired so the ADC reads high at the quiet end, so `read_volume()` inverts
+the reading; swap the pot's outer legs and that inversion comes out. The effect pot (ADC1)
 selects the preset in three zones, left to right. A preset change only
-affects new key presses, and prints `P <name>` over serial. Zone edges
-have a dead band so a knob resting on a boundary does not flicker.
+affects new key presses. Zone edges have a dead band so a knob resting
+on a boundary does not flicker.
 
-Presets are mirrored in `web/client/src/assets/song.json` (two for
-Twinkle Twinkle, one for Hot Cross Buns) and keyed by zone:
+Both knobs report over serial for the web client: `P <name>` for the
+preset and `V <percent>` for the volume knob's position, each on change
+and again every two seconds so a server that starts later catches up.
+The percent is where the knob sits, not the level it produces, since
+the taper is squared.
 
-| | twinkle-shimmer (left) | twinkle-vibrato (middle) | hotcross-tremolo (right) |
+Each preset is a different waveform with a different effect on top, and
+none is tied to a particular song:
+
+| | bell (left) | reed (middle) | organ (right) |
 | --- | --- | --- | --- |
-| Waveform | chime | soft saw | organ |
+| Waveform | chime | soft saw | drawbar organ |
 | Effect | detune shimmer | 5.5 Hz vibrato | 4 Hz tremolo |
 | Filter | low-pass 5 kHz | low-pass 3 kHz | low-pass 4 kHz |
+| Release | 0.18 s | 0.15 s | 0.12 s |
+
+Releases stay under 0.2 s so fast passages stay articulate. The tightest
+spacing in the charts is a sixteenth at 70 bpm, about 214 ms, and a
+longer tail would smear one note into the next.
 
 All waveforms are built additively from sine harmonics that stay below
 Nyquist, so naive saw/square aliasing cannot occur; filters are gentle

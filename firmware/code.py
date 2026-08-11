@@ -2,9 +2,8 @@
 # Reads twelve buttons, prints "K <key>" over USB serial, and plays each
 # key's note through the I2S amp using synthio. The volume pot on ADC0
 # sets the master level; the effect pot on ADC1 picks one of three
-# presets in three zones. Presets mirror the entries stored in
-# web/client/src/assets/song.json (two for Twinkle Twinkle, one for
-# Hot Cross Buns).
+# presets in three zones. Each preset is a different waveform and works
+# with any song; the name is printed as "P <name>" for the web client.
 
 import math
 import time
@@ -54,33 +53,39 @@ ORGAN = additive(((1, 0.9), (2, 0.6), (3, 0.4), (4, 0.25)))
 VIBRATO = synthio.LFO(rate=5.5, scale=0.012)  # pitch wobble, ~15 cents
 TREMOLO = synthio.LFO(rate=4.0, scale=0.25, offset=0.75)  # level 0.5-1.0
 
-# One preset per effect-pot zone, left to right. "detune" adds a second
+# One preset per effect-pot zone, left to right, each a different
+# waveform with a different effect on top. "detune" adds a second
 # oscillator slightly sharp for a shimmer; "bend"/"tremolo" attach an
 # LFO to pitch or amplitude. Filters are gentle low-passes (Q 0.707),
 # there to darken, not resonate.
+#
+# None of these is tied to a particular song. Releases are kept under
+# 0.2 s so that fast passages stay articulate: the tightest spacing in
+# the charts is a sixteenth at 70 bpm, about 214 ms, and a longer tail
+# would smear one note into the next.
 PRESETS = (
     {
-        "name": "twinkle-shimmer", "wave": CHIME, "detune": 1.006,
+        "name": "bell", "wave": CHIME, "detune": 1.006,
         "filter": 5000,
         "env": synthio.Envelope(
-            attack_time=0.005, decay_time=0.25,
-            sustain_level=0.5, release_time=0.3,
+            attack_time=0.003, decay_time=0.20,
+            sustain_level=0.35, release_time=0.18,
         ),
     },
     {
-        "name": "twinkle-vibrato", "wave": SOFT_SAW, "bend": VIBRATO,
+        "name": "reed", "wave": SOFT_SAW, "bend": VIBRATO,
         "filter": 3000,
         "env": synthio.Envelope(
-            attack_time=0.02, decay_time=0.10,
-            sustain_level=0.6, release_time=0.2,
+            attack_time=0.015, decay_time=0.10,
+            sustain_level=0.6, release_time=0.15,
         ),
     },
     {
-        "name": "hotcross-tremolo", "wave": ORGAN, "tremolo": TREMOLO,
+        "name": "organ", "wave": ORGAN, "tremolo": TREMOLO,
         "filter": 4000,
         "env": synthio.Envelope(
-            attack_time=0.01, decay_time=0.05,
-            sustain_level=0.8, release_time=0.15,
+            attack_time=0.008, decay_time=0.04,
+            sustain_level=0.8, release_time=0.12,
         ),
     },
 )
@@ -124,11 +129,31 @@ def pot_to_level(avg):
     return (avg / 65535) ** 2 * MAX_VOLUME
 
 
-vol_avg = pot_volume.value
+def read_volume():
+    # This pot's outer legs are wired so the ADC reads high at the quiet
+    # end. Inverting here means everything downstream, the mixer level
+    # and the reported percent alike, sees plain knob position.
+    return 65535 - pot_volume.value
+
+
+vol_avg = read_volume()
 level = pot_to_level(vol_avg)
 mixer.voice[0].level = level
 preset_index = preset_zone(pot_preset.value, 0)
 next_poll = time.monotonic()
+
+# Knob position as a whole percent, reported as "V <percent>" for the
+# web client's volume bar. This is where the knob sits, not the level
+# it produces: the taper below is squared, so a bar drawn from the
+# level would sit at a quarter with the knob at half way.
+volume_pct = int(vol_avg * 100 / 65535)
+
+# Preset and volume are re-announced on this interval as well as on
+# change. The server usually starts after the board is already running,
+# so it would otherwise miss the boot announcement and show nothing
+# until a knob was moved.
+ANNOUNCE_EVERY = 2.0
+next_announce = time.monotonic()
 
 keys = keypad.Keys(KEY_PINS, value_when_pressed=False, pull=True)
 
@@ -161,15 +186,25 @@ while True:
     if now >= next_poll:
         next_poll = now + POT_POLL
         # Light smoothing keeps ADC noise from making the level jitter.
-        vol_avg += (pot_volume.value - vol_avg) * 0.2
+        vol_avg += (read_volume() - vol_avg) * 0.2
         new_level = pot_to_level(vol_avg)
         if abs(new_level - level) > MAX_VOLUME / 200:
             level = new_level
             mixer.voice[0].level = level
+            # Reported here rather than every poll so ADC noise cannot
+            # flicker the bar back and forth while the knob sits still.
+            pct = int(vol_avg * 100 / 65535)
+            if pct != volume_pct:
+                volume_pct = pct
+                print("V", volume_pct)
         zone = preset_zone(pot_preset.value, preset_index)
         if zone != preset_index:
             preset_index = zone
-            print("P", PRESETS[zone]["name"])
+            next_announce = now
+    if now >= next_announce:
+        next_announce = now + ANNOUNCE_EVERY
+        print("P", PRESETS[preset_index]["name"])
+        print("V", volume_pct)
 
     event = keys.events.get()
     if event:
