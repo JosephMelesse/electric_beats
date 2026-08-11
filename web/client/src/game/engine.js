@@ -3,6 +3,24 @@
 
 export const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "*", "#"];
 
+// The keypad is chromatic from C4, so every key is one note. Pairs with the
+// firmware's NOTE_FREQ table, where "*" is A#4 and "0" is A4. All twelve sit
+// in the same octave, so the labels drop the octave number.
+export const NOTES = {
+  1: "C",
+  2: "C#",
+  3: "D",
+  4: "D#",
+  5: "E",
+  6: "F",
+  7: "F#",
+  8: "G",
+  9: "G#",
+  0: "A",
+  "*": "A#",
+  "#": "B",
+};
+
 const HIT_WINDOW_BEATS = 1.9; // asteroid lifetime after its beat
 const LOOP_GAP_BEATS = 4; // silence before the song restarts
 const LASER_MS = 150;
@@ -52,7 +70,13 @@ export function layoutSlots(width, height) {
   const slots = new Map();
   for (const key of KEYS) {
     const { x, y } = place(SKETCH.slots[key]);
-    slots.set(key, { key, x, y, angle: Math.atan2(y - ship.y, x - ship.x) });
+    slots.set(key, {
+      key,
+      note: NOTES[key],
+      x,
+      y,
+      angle: Math.atan2(y - ship.y, x - ship.x),
+    });
   }
   return { ship, slots };
 }

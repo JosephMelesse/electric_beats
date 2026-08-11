@@ -26,6 +26,8 @@ export default function Game({ width = 800, height = 600 }) {
   const [runId, setRunId] = useState(0);
   const [started, setStarted] = useState(false);
   const [over, setOver] = useState(false);
+  const [preset, setPreset] = useState(null);
+  const [volume, setVolume] = useState(null);
   const song = songs[songIndex];
 
   // Start, retry and song picks round-trip through the server so every
@@ -54,6 +56,10 @@ export default function Game({ width = 800, height = 600 }) {
         engineRef.current?.press(message.key, performance.now());
       } else if (message.type === "control") {
         applyControl(message);
+      } else if (message.type === "preset") {
+        setPreset(message.name);
+      } else if (message.type === "volume") {
+        setVolume(message.value);
       }
     });
     return () => {
@@ -107,7 +113,7 @@ export default function Game({ width = 800, height = 600 }) {
         ctx.strokeStyle = "gray";
         ctx.stroke();
         ctx.fillStyle = "gray";
-        ctx.fillText(slot.key, slot.x, slot.y);
+        ctx.fillText(slot.note, slot.x, slot.y);
       }
 
       // Asteroids grow from small to full size over their hit window,
@@ -182,24 +188,49 @@ export default function Game({ width = 800, height = 600 }) {
 
   return (
     <div className="game">
-      <details ref={menuRef} className="dropdown">
-        <summary className="btn btn-outline btn-primary btn-sm">
-          Song: {song.title} &#9662;
-        </summary>
-        <ul className="menu dropdown-content z-10 mt-1 w-56 rounded-box border border-base-300 bg-base-100 p-2 shadow">
-          {songs.map((entry, index) => (
-            <li key={entry.title}>
-              <button
-                type="button"
-                className={index === songIndex ? "menu-active" : ""}
-                onClick={() => sendControl({ action: "song", index })}
-              >
-                {entry.title}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </details>
+      <div className="game-bar">
+        <div
+          className="game-volume"
+          title="Set by the volume pot"
+          role="progressbar"
+          aria-label="Volume"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={volume ?? undefined}
+        >
+          <span>Vol</span>
+          <span className="game-volume-track">
+            <span
+              className="game-volume-fill"
+              style={{ width: `${volume ?? 0}%` }}
+            />
+          </span>
+          <span className="game-volume-value">
+            {volume === null ? "--" : `${volume}%`}
+          </span>
+        </div>
+        <details ref={menuRef} className="dropdown">
+          <summary className="btn btn-outline btn-primary btn-sm">
+            Song: {song.title} &#9662;
+          </summary>
+          <ul className="menu dropdown-content z-10 mt-1 w-56 rounded-box border border-base-300 bg-base-100 p-2 shadow">
+            {songs.map((entry, index) => (
+              <li key={entry.title}>
+                <button
+                  type="button"
+                  className={index === songIndex ? "menu-active" : ""}
+                  onClick={() => sendControl({ action: "song", index })}
+                >
+                  {entry.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+        <span className="game-preset" title="Set by the effect pot">
+          Preset: <strong>{preset ?? "waiting for keypad"}</strong>
+        </span>
+      </div>
       <div className="game-stage">
         <canvas ref={canvasRef} width={width} height={height} />
         {!started && (

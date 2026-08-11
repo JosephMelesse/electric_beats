@@ -1,25 +1,20 @@
 {
   "instrument": {
     "name": "Cache Register",
-    "tagline": "hand-built | 12 keys | chromatic from C4",
-    "photo": "/src/assets/instrument_photo.png"
+    "tagline": "Beep Boop",
+    "photo": "/src/assets/image.jpg"
   },
   "sections": [
     {
       "title": "Profiles",
-      "items": ["Profile point one", "Profile point two", "Profile point three"]
-    },
-    {
-      "title": "Effects",
-      "items": ["Effect point one", "Effect point two", "Effect point three"]
+      "items": ["Bell", "Soft saw", "Organ"]
     },
     {
       "title": "Design Choices",
-      "items": ["Design point one", "Design point two", "Design point three"]
-    },
-    {
-      "title": "Vibe",
-      "items": ["Vibe point one", "Vibe point two", "Vibe point three"]
+      "items": [
+        "Ergonomic custom keypad for comfort",
+        "Interactive game for fun and learning"
+      ]
     }
   ],
   "team": [

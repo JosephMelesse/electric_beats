@@ -2,20 +2,6 @@
   {
     "title": "Twinkle Twinkle",
     "bpm": 100,
-    "presets": [
-      {
-        "zone": 0,
-        "name": "twinkle-shimmer",
-        "effect": "detuned second oscillator for a chorus shimmer",
-        "waveform": "chime (additive harmonics 1, 2, 3, 4)"
-      },
-      {
-        "zone": 1,
-        "name": "twinkle-vibrato",
-        "effect": "5.5 Hz pitch vibrato LFO, about 15 cents deep",
-        "waveform": "soft saw (additive harmonics 1-8, 1/k)"
-      }
-    ],
     "steps": [
       { "key": "1", "beat": 0 },
       { "key": "1", "beat": 1 },
@@ -64,14 +50,6 @@
   {
     "title": "Hot Cross Buns",
     "bpm": 100,
-    "presets": [
-      {
-        "zone": 2,
-        "name": "hotcross-tremolo",
-        "effect": "4 Hz amplitude tremolo LFO between 50% and 100%",
-        "waveform": "organ (additive harmonics 1, 2, 3, 4, drawbar style)"
-      }
-    ],
     "steps": [
       { "key": "5", "beat": 0 },
       { "key": "3", "beat": 1 },
