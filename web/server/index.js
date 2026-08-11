@@ -45,6 +45,11 @@ async function serveStatic(req, res) {
 
 async function main() {
   const clients = new Set();
+  // Last preset and volume the keypad reported. Held so a browser that
+  // connects later is told the current ones instead of waiting for a
+  // knob to move.
+  let currentPreset = null;
+  let currentVolume = null;
   const broadcast = (message) => {
     const payload = JSON.stringify(message);
     for (const socket of clients) {
@@ -71,6 +76,12 @@ async function main() {
   // step. Clients never apply a control locally when the socket is up.
   wss.on("connection", (socket) => {
     clients.add(socket);
+    if (currentPreset !== null) {
+      socket.send(JSON.stringify({ type: "preset", name: currentPreset }));
+    }
+    if (currentVolume !== null) {
+      socket.send(JSON.stringify({ type: "volume", value: currentVolume }));
+    }
     socket.on("message", (data) => {
       let message;
       try {
@@ -87,6 +98,17 @@ async function main() {
 
   const serial = new SerialSource({ path: SERIAL_PATH });
   serial.on("key", (key) => broadcast({ type: "key", key }));
+  serial.on("preset", (name) => {
+    currentPreset = name;
+    broadcast({ type: "preset", name });
+  });
+  serial.on("volume", (value) => {
+    if (value === currentVolume) {
+      return;
+    }
+    currentVolume = value;
+    broadcast({ type: "volume", value });
+  });
 
   let serialConnected = null;
   serial.on("status", ({ connected, reason }) => {

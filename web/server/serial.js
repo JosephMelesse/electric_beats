@@ -1,6 +1,8 @@
 import { EventEmitter } from "node:events";
 
 const KEY_LINE = /^K ([0-9*#])$/;
+const PRESET_LINE = /^P ([\w-]+)$/;
+const VOLUME_LINE = /^V (\d{1,3})$/;
 
 export class SerialSource extends EventEmitter {
   constructor({ path, baudRate = 115200, retryMs = 2000 }) {
@@ -49,9 +51,20 @@ export class SerialSource extends EventEmitter {
       const lines = this.buffer.split("\n");
       this.buffer = lines.pop();
       for (const line of lines) {
-        const match = KEY_LINE.exec(line.trim());
-        if (match !== null) {
-          this.emit("key", match[1]);
+        const text = line.trim();
+        const key = KEY_LINE.exec(text);
+        if (key !== null) {
+          this.emit("key", key[1]);
+          continue;
+        }
+        const preset = PRESET_LINE.exec(text);
+        if (preset !== null) {
+          this.emit("preset", preset[1]);
+          continue;
+        }
+        const volume = VOLUME_LINE.exec(text);
+        if (volume !== null) {
+          this.emit("volume", Math.min(100, Number(volume[1])));
         }
       }
     });
