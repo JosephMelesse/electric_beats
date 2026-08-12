@@ -12,7 +12,7 @@ README documents the wiring, the synth patch, and the pot-selected effects.
 - `web/server/` serves the client, bridges serial to the `/ws` websocket.
 - `web/client/src/game/engine.js` pure game state: slots, song clock,
   spawn and expiry, hit detection, score.
-- `web/client/src/Game.jsx` canvas rendering and websocket input.
+- `web/client/src/pages/Game.jsx` canvas rendering and websocket input.
 - `web/client/src/assets/song.json` tempo and the key sequence.
 
 ## Non-goals

@@ -74,5 +74,8 @@ every copy; no build step. Everything used is built into CircuitPython,
 no libraries to install.
 
 Note: with CircuitPython the serial port carries the Python console, so
-the server may see REPL noise besides the `K` lines; its parser ignores
-anything that is not a key line.
+the server may see REPL noise besides the `K`, `P` and `V` lines; its
+parser ignores anything that does not match one of those three.
+
+The board and the server share `/dev/ttyACM0`, so stop the server before
+opening a serial monitor such as `screen /dev/ttyACM0 115200`.
